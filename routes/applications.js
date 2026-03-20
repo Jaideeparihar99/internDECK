@@ -1,99 +1,130 @@
 const express = require('express');
 const Application = require('../models/Application');
 const Company = require('../models/Company');
-const { protect, allowRoles } = require('../middleware/auth');
+const { auth, authorize } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Apply to company
-router.post('/:companyId', protect, allowRoles('student'), async (req, res) => {
+// POST /api/applications/:companyId — student applies
+router.post('/:companyId', auth, authorize('student'), async (req, res) => {
   try {
-    // Check for duplicate application
-    const existingApplication = await Application.findOne({
-      studentId: req.user.id,
-      companyId: req.params.companyId,
-    });
-
-    if (existingApplication) {
-      return res
-        .status(400)
-        .json({ success: false, message: 'You have already applied to this company' });
+    const company = await Company.findById(req.params.companyId);
+    if (!company || !company.isOpen) {
+      return res.status(400).json({ message: 'Company not found or not accepting applications' });
     }
 
+    const existing = await Application.findOne({
+      studentId: req.user._id,
+      companyId: req.params.companyId
+    });
+    if (existing) return res.status(400).json({ message: 'Already applied to this company' });
+
     const application = await Application.create({
-      studentId: req.user.id,
+      studentId: req.user._id,
       companyId: req.params.companyId,
-      status: 'mentor_pending',
+      coverLetter: req.body.coverLetter,
+      resumeUrl: req.user.resumeUrl
     });
 
-    await application.populate('companyId', 'name roleName');
-
-    res.status(201).json({
-      success: true,
-      data: application,
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(201).json(application);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 });
 
-// Get student's applications
-router.get('/mine', protect, allowRoles('student'), async (req, res) => {
+// GET /api/applications/mine — student
+router.get('/mine', auth, authorize('student'), async (req, res) => {
   try {
-    const applications = await Application.find({ studentId: req.user.id })
-      .populate('companyId', 'name roleName stipend')
+    const applications = await Application.find({ studentId: req.user._id })
+      .populate('companyId')
       .sort({ createdAt: -1 });
-
-    res.status(200).json({
-      success: true,
-      data: applications,
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.json(applications);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 });
 
-// Get pending mentor approvals
-router.get('/pending-mentor', protect, allowRoles('mentor'), async (req, res) => {
+// GET /api/applications/pending-mentor — mentor sees pending approvals
+router.get('/pending-mentor', auth, authorize('mentor'), async (req, res) => {
   try {
-    const applications = await Application.find({ status: 'mentor_pending' })
-      .populate('studentId', 'name email cgpa branch')
-      .populate('companyId', 'name roleName stipend')
-      .sort({ createdAt: -1 });
+    const User = require('../models/User');
+    const myStudents = await User.find({ mentorId: req.user._id, role: 'student' }).select('_id');
+    const ids = myStudents.map(s => s._id);
 
-    res.status(200).json({
-      success: true,
-      data: applications,
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    const applications = await Application.find({
+      studentId: { $in: ids },
+      'mentorApproval.status': 'pending'
+    })
+      .populate('studentId', 'name email branch cgpa')
+      .populate('companyId', 'name role stipend');
+
+    res.json(applications);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 });
 
-// Mentor approval/rejection
-router.patch('/:id/mentor', protect, allowRoles('mentor'), async (req, res) => {
+// PATCH /api/applications/:id/mentor — mentor approves/rejects
+router.patch('/:id/mentor', auth, authorize('mentor'), async (req, res) => {
   try {
-    const { mentorApproved, mentorNote, status } = req.body;
+    const { status, remarks } = req.body;
+    if (!['approved', 'rejected'].includes(status)) {
+      return res.status(400).json({ message: 'Status must be approved or rejected' });
+    }
 
     const application = await Application.findByIdAndUpdate(
       req.params.id,
       {
-        mentorApproved,
-        mentorNote,
-        mentorId: req.user.id,
-        status: status || 'mentor_pending',
+        'mentorApproval.status': status,
+        'mentorApproval.approvedBy': req.user._id,
+        'mentorApproval.approvedAt': new Date(),
+        'mentorApproval.remarks': remarks,
+        status: status === 'approved' ? 'approved' : 'rejected'
       },
       { new: true }
-    )
-      .populate('studentId', 'name email')
-      .populate('companyId', 'name roleName');
+    ).populate('studentId', 'name email').populate('companyId', 'name role');
 
-    res.status(200).json({
-      success: true,
-      data: application,
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    if (!application) return res.status(404).json({ message: 'Application not found' });
+    res.json(application);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// GET /api/applications/all — placement_cell
+router.get('/all', auth, authorize('placement_cell'), async (req, res) => {
+  try {
+    const { status, page = 1, limit = 20 } = req.query;
+    const filter = {};
+    if (status) filter.status = status;
+
+    const applications = await Application.find(filter)
+      .populate('studentId', 'name email branch')
+      .populate('companyId', 'name role')
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(parseInt(limit));
+
+    const total = await Application.countDocuments(filter);
+    res.json({ applications, total });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// PATCH /api/applications/:id/status — placement_cell updates status
+router.patch('/:id/status', auth, authorize('placement_cell'), async (req, res) => {
+  try {
+    const { status } = req.body;
+    const application = await Application.findByIdAndUpdate(
+      req.params.id,
+      { status },
+      { new: true }
+    );
+    if (!application) return res.status(404).json({ message: 'Application not found' });
+    res.json(application);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 });
 

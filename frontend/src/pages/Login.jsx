@@ -1,118 +1,64 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import * as api from '../utils/api';
-import '../styles/global.css';
+import { Link, useNavigate } from 'react-router-dom';
+import { api } from '../utils/api';
+
+const ROLE_HOME = {
+  student: '/student',
+  mentor: '/mentor',
+  placement_cell: '/placement',
+  recruiter: '/recruiter'
+};
 
 export default function Login() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('student');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [studentId, setStudentId] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [form, setForm] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = async (e) => {
+  const handle = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+
+  const submit = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
-
     try {
-      const response = await api.login(email, password);
-      localStorage.setItem('token', response.token);
-      localStorage.setItem('role', response.role);
-      localStorage.setItem('name', response.name);
-
-      // Navigate based on role
-      if (response.role === 'student') {
-        navigate('/student/dashboard');
-      } else if (response.role === 'mentor') {
-        navigate('/mentor/dashboard');
-      } else if (response.role === 'placement_cell') {
-        navigate('/placement/dashboard');
-      } else if (response.role === 'recruiter') {
-        navigate('/recruiter/dashboard');
-      }
+      const { token, user } = await api.login(form);
+      localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(user));
+      navigate(ROLE_HOME[user.role] || '/');
     } catch (err) {
-      setError(err.message || 'Login failed');
+      setError(err.message);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="login-page">
-      <div className="login-card">
-        <h1 className="login-logo">CampusConnect</h1>
-        
-        <div className="login-tabs">
-          <button
-            className={`tab ${activeTab === 'student' ? 'active' : ''}`}
-            onClick={() => setActiveTab('student')}
-          >
-            Student
-          </button>
-          <button
-            className={`tab ${activeTab === 'admin' ? 'active' : ''}`}
-            onClick={() => setActiveTab('admin')}
-          >
-            Admin
-          </button>
-          <button
-            className={`tab ${activeTab === 'recruiter' ? 'active' : ''}`}
-            onClick={() => setActiveTab('recruiter')}
-          >
-            Recruiter
-          </button>
-        </div>
+    <div className="auth-page">
+      <div className="auth-card">
+        <div className="auth-logo">🎓 CampusConnect</div>
+        <p className="auth-sub">Sign in to your account</p>
 
-        <form onSubmit={handleLogin}>
+        {error && <div className="alert alert-error">{error}</div>}
+
+        <form onSubmit={submit}>
           <div className="form-group">
-            <label htmlFor="email">Email Address</label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Enter your email"
-              required
-            />
+            <label className="form-label">Email</label>
+            <input className="form-input" type="email" name="email" placeholder="your@email.com"
+              value={form.email} onChange={handle} required />
           </div>
-
-          {activeTab === 'student' && (
-            <div className="form-group">
-              <label htmlFor="studentId">Student ID</label>
-              <input
-                id="studentId"
-                type="text"
-                value={studentId}
-                onChange={(e) => setStudentId(e.target.value)}
-                placeholder="Enter your student ID"
-              />
-            </div>
-          )}
-
           <div className="form-group">
-            <label htmlFor="password">Password</label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter your password"
-              required
-            />
+            <label className="form-label">Password</label>
+            <input className="form-input" type="password" name="password" placeholder="••••••••"
+              value={form.password} onChange={handle} required />
           </div>
-
-          {error && <div className="error-message">{error}</div>}
-
-          <button type="submit" className="btn btn-primary btn-block" disabled={loading}>
-            {loading ? 'Logging in...' : 'Login'}
+          <button className="btn btn-primary btn-lg" style={{ width: '100%' }} disabled={loading}>
+            {loading ? 'Signing in…' : 'Sign In'}
           </button>
         </form>
 
-        <p className="login-footer">
-          Don't have an account? <a href="/register">Register here</a>
+        <p className="auth-footer">
+          Don't have an account? <Link to="/register">Register</Link>
         </p>
       </div>
     </div>

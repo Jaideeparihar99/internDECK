@@ -1,206 +1,76 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import ProtectedRoute from './components/ProtectedRoute';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
-// Public pages
 import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Register from './pages/Register';
 
-// Student pages
+// Student
 import StudentDashboard from './pages/student/Dashboard';
-import StudentProfile from './pages/student/Profile';
-import StudentMatches from './pages/student/Matches';
-import StudentBrowse from './pages/student/Browse';
+import StudentCompanies from './pages/student/Companies';
 import StudentApplications from './pages/student/Applications';
-import StudentCalendar from './pages/student/Calendar';
+import StudentInterviews from './pages/student/Interviews';
+import StudentProfile from './pages/student/Profile';
 import StudentCertificates from './pages/student/Certificates';
 
-// Mentor pages
+// Mentor
 import MentorDashboard from './pages/mentor/Dashboard';
 import MentorApprovals from './pages/mentor/Approvals';
 import MentorStudents from './pages/mentor/Students';
 import MentorFeedback from './pages/mentor/Feedback';
 
-// Placement Cell pages
+// Placement Cell
 import PlacementDashboard from './pages/placement/Dashboard';
-import PostCompany from './pages/placement/PostCompany';
-import AllStudents from './pages/placement/AllStudents';
-import PlacementStats from './pages/placement/Stats';
+import PlacementCompanies from './pages/placement/Companies';
+import PlacementStudents from './pages/placement/Students';
+import PlacementInterviews from './pages/placement/Interviews';
 
-// Recruiter pages
+// Recruiter
 import RecruiterDashboard from './pages/recruiter/Dashboard';
 import RecruiterSearch from './pages/recruiter/Search';
-import RecruiterPipeline from './pages/recruiter/Pipeline';
 
-import './styles/global.css';
+function ProtectedRoute({ children, roles }) {
+  const token = localStorage.getItem('token');
+  const user = JSON.parse(localStorage.getItem('user') || 'null');
+  if (!token || !user) return <Navigate to="/login" replace />;
+  if (roles && !roles.includes(user.role)) return <Navigate to="/" replace />;
+  return children;
+}
 
-function App() {
+export default function App() {
   return (
-    <Router>
+    <BrowserRouter>
       <Routes>
-        {/* Public routes */}
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
 
-        {/* Student routes */}
-        <Route
-          path="/student/dashboard"
-          element={
-            <ProtectedRoute>
-              <StudentDashboard />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/student/profile"
-          element={
-            <ProtectedRoute>
-              <StudentProfile />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/student/matches"
-          element={
-            <ProtectedRoute>
-              <StudentMatches />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/student/browse"
-          element={
-            <ProtectedRoute>
-              <StudentBrowse />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/student/applications"
-          element={
-            <ProtectedRoute>
-              <StudentApplications />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/student/calendar"
-          element={
-            <ProtectedRoute>
-              <StudentCalendar />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/student/certificates"
-          element={
-            <ProtectedRoute>
-              <StudentCertificates />
-            </ProtectedRoute>
-          }
-        />
+        {/* Student */}
+        <Route path="/student" element={<ProtectedRoute roles={['student']}><StudentDashboard /></ProtectedRoute>} />
+        <Route path="/student/companies" element={<ProtectedRoute roles={['student']}><StudentCompanies /></ProtectedRoute>} />
+        <Route path="/student/applications" element={<ProtectedRoute roles={['student']}><StudentApplications /></ProtectedRoute>} />
+        <Route path="/student/interviews" element={<ProtectedRoute roles={['student']}><StudentInterviews /></ProtectedRoute>} />
+        <Route path="/student/profile" element={<ProtectedRoute roles={['student']}><StudentProfile /></ProtectedRoute>} />
+        <Route path="/student/certificates" element={<ProtectedRoute roles={['student']}><StudentCertificates /></ProtectedRoute>} />
 
-        {/* Mentor routes */}
-        <Route
-          path="/mentor/dashboard"
-          element={
-            <ProtectedRoute>
-              <MentorDashboard />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/mentor/approvals"
-          element={
-            <ProtectedRoute>
-              <MentorApprovals />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/mentor/students"
-          element={
-            <ProtectedRoute>
-              <MentorStudents />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/mentor/feedback"
-          element={
-            <ProtectedRoute>
-              <MentorFeedback />
-            </ProtectedRoute>
-          }
-        />
+        {/* Mentor */}
+        <Route path="/mentor" element={<ProtectedRoute roles={['mentor']}><MentorDashboard /></ProtectedRoute>} />
+        <Route path="/mentor/approvals" element={<ProtectedRoute roles={['mentor']}><MentorApprovals /></ProtectedRoute>} />
+        <Route path="/mentor/students" element={<ProtectedRoute roles={['mentor']}><MentorStudents /></ProtectedRoute>} />
+        <Route path="/mentor/feedback" element={<ProtectedRoute roles={['mentor']}><MentorFeedback /></ProtectedRoute>} />
 
-        {/* Placement Cell routes */}
-        <Route
-          path="/placement/dashboard"
-          element={
-            <ProtectedRoute>
-              <PlacementDashboard />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/placement/post-company"
-          element={
-            <ProtectedRoute>
-              <PostCompany />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/placement/all-students"
-          element={
-            <ProtectedRoute>
-              <AllStudents />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/placement/stats"
-          element={
-            <ProtectedRoute>
-              <PlacementStats />
-            </ProtectedRoute>
-          }
-        />
+        {/* Placement Cell */}
+        <Route path="/placement" element={<ProtectedRoute roles={['placement_cell']}><PlacementDashboard /></ProtectedRoute>} />
+        <Route path="/placement/companies" element={<ProtectedRoute roles={['placement_cell']}><PlacementCompanies /></ProtectedRoute>} />
+        <Route path="/placement/students" element={<ProtectedRoute roles={['placement_cell']}><PlacementStudents /></ProtectedRoute>} />
+        <Route path="/placement/interviews" element={<ProtectedRoute roles={['placement_cell']}><PlacementInterviews /></ProtectedRoute>} />
 
-        {/* Recruiter routes */}
-        <Route
-          path="/recruiter/dashboard"
-          element={
-            <ProtectedRoute>
-              <RecruiterDashboard />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/recruiter/search"
-          element={
-            <ProtectedRoute>
-              <RecruiterSearch />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/recruiter/pipeline"
-          element={
-            <ProtectedRoute>
-              <RecruiterPipeline />
-            </ProtectedRoute>
-          }
-        />
+        {/* Recruiter */}
+        <Route path="/recruiter" element={<ProtectedRoute roles={['recruiter']}><RecruiterDashboard /></ProtectedRoute>} />
+        <Route path="/recruiter/search" element={<ProtectedRoute roles={['recruiter']}><RecruiterSearch /></ProtectedRoute>} />
 
-        {/* Catch all - redirect to landing */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </Router>
+    </BrowserRouter>
   );
 }
-
-export default App;

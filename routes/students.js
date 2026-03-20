@@ -2,88 +2,94 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const User = require('../models/User');
-const { protect, allowRoles } = require('../middleware/auth');
+const { auth, authorize } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Configure multer for file uploads
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, path.join(__dirname, '../uploads'));
-  },
+  destination: (req, file, cb) => cb(null, 'uploads/'),
   filename: (req, file, cb) => {
-    cb(null, `resume_${req.user.id}_${Date.now()}.pdf`);
-  },
+    const unique = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    cb(null, `resume-${req.user._id}-${unique}${path.extname(file.originalname)}`);
+  }
 });
-
-const upload = multer({ storage });
-
-// Get student profile
-router.get('/me', protect, allowRoles('student'), async (req, res) => {
-  try {
-    const student = await User.findById(req.user.id).populate('mentorId', 'name email');
-
-    res.status(200).json({
-      success: true,
-      data: student,
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype === 'application/pdf') cb(null, true);
+    else cb(new Error('Only PDF files allowed'));
   }
 });
 
-// Update student profile
-router.put('/me', protect, allowRoles('student'), async (req, res) => {
+// GET /api/students/me
+router.get('/me', auth, async (req, res) => {
   try {
-    const { branch, semester, cgpa, skills, coverLetter, profileUpdatedAt, profileSemester } =
-      req.body;
-
-    const updateData = {};
-
-    if (branch) updateData.branch = branch;
-    if (semester) updateData.semester = semester;
-    if (cgpa) updateData.cgpa = cgpa;
-    if (skills) updateData.skills = skills;
-    if (coverLetter) updateData.coverLetter = coverLetter;
-    if (profileUpdatedAt) updateData.profileUpdatedAt = profileUpdatedAt;
-    if (profileSemester) updateData.profileSemester = profileSemester;
-
-    const student = await User.findByIdAndUpdate(req.user.id, updateData, {
-      new: true,
-      runValidators: true,
-    });
-
-    res.status(200).json({
-      success: true,
-      data: student,
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    const user = await User.findById(req.user._id).populate('mentorId', 'name email');
+    res.json(user);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 });
 
-// Upload resume
-router.post('/upload-resume', protect, allowRoles('student'), upload.single('resume'), async (req, res) => {
+// PUT /api/students/me
+router.put('/me', auth, async (req, res) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({ success: false, message: 'No file uploaded' });
+    const allowed = ['name', 'branch', 'cgpa', 'skills', 'rollNumber', 'mentorId'];
+    const updates = {};
+    allowed.forEach(k => { if (req.body[k] !== undefined) updates[k] = req.body[k]; });
+
+    const user = await User.findByIdAndUpdate(req.user._id, updates, { new: true });
+    res.json(user);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// POST /api/students/upload-resume
+router.post('/upload-resume', auth, upload.single('resume'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
+    const resumeUrl = `/uploads/${req.file.filename}`;
+    await User.findByIdAndUpdate(req.user._id, { resumeUrl });
+    res.json({ resumeUrl });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// GET /api/students — placement_cell / recruiter / mentor
+router.get('/', auth, authorize('placement_cell', 'recruiter', 'mentor'), async (req, res) => {
+  try {
+    const { branch, minCgpa, skills, page = 1, limit = 20 } = req.query;
+    const filter = { role: 'student' };
+    if (branch) filter.branch = branch;
+    if (minCgpa) filter.cgpa = { $gte: parseFloat(minCgpa) };
+    if (skills) {
+      const skillArr = skills.split(',').map(s => s.trim());
+      filter.skills = { $all: skillArr };
     }
 
-    const resumeUrl = `/uploads/${req.file.filename}`;
+    const students = await User.find(filter)
+      .select('-password')
+      .skip((page - 1) * limit)
+      .limit(parseInt(limit))
+      .populate('mentorId', 'name email');
 
-    const student = await User.findByIdAndUpdate(
-      req.user.id,
-      { resumeUrl },
-      { new: true }
-    );
+    const total = await User.countDocuments(filter);
+    res.json({ students, total, page: parseInt(page) });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
 
-    res.status(200).json({
-      success: true,
-      data: student,
-      resumeUrl,
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+// GET /api/students/mentored — mentor sees their students
+router.get('/mentored', auth, authorize('mentor'), async (req, res) => {
+  try {
+    const students = await User.find({ role: 'student', mentorId: req.user._id }).select('-password');
+    res.json(students);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 });
 

@@ -1,85 +1,70 @@
-const scoreCompany = (student, company) => {
-  let totalScore = 0;
-  const breakdown = {
-    skillMatch: 0,
-    cgpaCheck: 0,
-    branchEligibility: 0,
-    placementPotential: 0,
-  };
+/**
+ * Recommendation Engine
+ * Scores companies for a student based on skills, CGPA, branch, and placement potential.
+ */
 
-  // Skill match = matched skills / required skills * 50
-  if (company.requiredSkills && company.requiredSkills.length > 0) {
-    const studentSkillsLower = (student.skills || []).map((s) => s.toLowerCase());
-    const matchedSkills = company.requiredSkills.filter((skill) =>
-      studentSkillsLower.includes(skill.toLowerCase())
-    ).length;
+function scoreCompany(student, company) {
+  let score = 0;
+  const breakdown = {};
 
-    breakdown.skillMatch = Math.round((matchedSkills / company.requiredSkills.length) * 50);
-    totalScore += breakdown.skillMatch;
-  }
+  // Skills match — 50 points
+  const studentSkills = (student.skills || []).map(s => s.toLowerCase());
+  const requiredSkills = (company.requiredSkills || []).map(s => s.toLowerCase());
 
-  // CGPA check = 20 points if student CGPA >= company minCgpa
-  if (student.cgpa >= (company.minCgpa || 0)) {
-    breakdown.cgpaCheck = 20;
-    totalScore += 20;
-  }
-
-  // Branch eligibility = 20 points if student branch is in company's eligible branches
-  if (company.eligibleBranches && company.eligibleBranches.length > 0) {
-    if (
-      company.eligibleBranches.some(
-        (branch) => branch.toLowerCase() === (student.branch || '').toLowerCase()
-      )
-    ) {
-      breakdown.branchEligibility = 20;
-      totalScore += 20;
-    }
+  if (requiredSkills.length > 0) {
+    const matched = requiredSkills.filter(s => studentSkills.includes(s));
+    const skillScore = Math.round((matched.length / requiredSkills.length) * 50);
+    score += skillScore;
+    breakdown.skills = skillScore;
+    breakdown.matchedSkills = matched;
   } else {
-    // If no branch restrictions, give full points
-    breakdown.branchEligibility = 20;
-    totalScore += 20;
+    score += 25; // No skill requirement = neutral
+    breakdown.skills = 25;
+    breakdown.matchedSkills = [];
   }
 
-  // Placement potential
-  if (company.placementPotential === 'High') {
-    breakdown.placementPotential = 10;
-    totalScore += 10;
-  } else if (company.placementPotential === 'Medium') {
-    breakdown.placementPotential = 5;
-    totalScore += 5;
-  } else if (company.placementPotential === 'Low') {
-    breakdown.placementPotential = 2;
-    totalScore += 2;
+  // CGPA eligibility — 20 points
+  const minCgpa = company.minCgpa || 0;
+  if ((student.cgpa || 0) >= minCgpa) {
+    const cgpaScore = Math.min(20, Math.round(((student.cgpa - minCgpa) / (10 - minCgpa)) * 10 + 10));
+    score += cgpaScore;
+    breakdown.cgpa = cgpaScore;
+  } else {
+    breakdown.cgpa = 0;
   }
 
-  return {
-    score: Math.min(totalScore, 100),
-    breakdown,
-  };
-};
+  // Branch eligibility — 20 points
+  const eligibleBranches = company.eligibleBranches || [];
+  if (eligibleBranches.length === 0 || eligibleBranches.includes(student.branch)) {
+    score += 20;
+    breakdown.branch = 20;
+  } else {
+    breakdown.branch = 0;
+  }
 
-const getRecommendations = (student, companies) => {
-  // Filter to only open and verified companies
-  const openVerifiedCompanies = companies.filter((c) => c.isOpen && c.isVerified);
+  // Placement potential (stipend > 0 and openings) — 10 points
+  if (company.stipend > 0) score += 5;
+  if (company.openings > 1) score += 5;
+  breakdown.potential = (company.stipend > 0 ? 5 : 0) + (company.openings > 1 ? 5 : 0);
 
-  // Map each company through scoreCompany
-  const scoredCompanies = openVerifiedCompanies
-    .map((company) => {
+  return { score, breakdown };
+}
+
+function getRecommendations(student, companies) {
+  const scored = companies
+    .map(company => {
       const { score, breakdown } = scoreCompany(student, company);
       return {
         company,
         score,
-        breakdown,
+        breakdown
       };
     })
-    .filter((item) => item.score > 0)
+    .filter(item => item.score > 0)
     .sort((a, b) => b.score - a.score)
     .slice(0, 10);
 
-  return scoredCompanies;
-};
+  return scored;
+}
 
-module.exports = {
-  scoreCompany,
-  getRecommendations,
-};
+module.exports = { getRecommendations, scoreCompany };

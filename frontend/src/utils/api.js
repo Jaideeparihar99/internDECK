@@ -1,129 +1,63 @@
-const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+const BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
-const getToken = () => localStorage.getItem('token');
+function getToken() {
+  return localStorage.getItem('token');
+}
 
-const request = async (endpoint, options = {}) => {
-  const token = getToken();
-  const headers = {
-    'Content-Type': 'application/json',
-    ...options.headers,
-  };
-
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  }
-
-  const response = await fetch(`${BASE_URL}${endpoint}`, {
-    ...options,
-    headers,
-  });
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || 'API request failed');
-  }
-
-  return response.json();
-};
-
-// Auth functions
-export const login = (email, password) => {
-  return request('/auth/login', {
-    method: 'POST',
-    body: JSON.stringify({ email, password }),
-  });
-};
-
-export const register = (name, email, password, role, studentId, branch, semester) => {
-  return request('/auth/register', {
-    method: 'POST',
-    body: JSON.stringify({ name, email, password, role, studentId, branch, semester }),
-  });
-};
-
-// Student functions
-export const getProfile = () => {
-  return request('/students/me');
-};
-
-export const updateProfile = (data) => {
-  return request('/students/me', {
-    method: 'PUT',
-    body: JSON.stringify(data),
-  });
-};
-
-export const uploadResume = (file) => {
-  const formData = new FormData();
-  formData.append('resume', file);
-
-  const token = getToken();
+async function request(method, path, body = null, isFormData = false) {
   const headers = {};
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  }
+  const token = getToken();
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  if (!isFormData) headers['Content-Type'] = 'application/json';
 
-  return fetch(`${BASE_URL}/students/upload-resume`, {
-    method: 'POST',
+  const res = await fetch(`${BASE}${path}`, {
+    method,
     headers,
-    body: formData,
-  }).then((res) => {
-    if (!res.ok) throw new Error('Upload failed');
-    return res.json();
+    body: body ? (isFormData ? body : JSON.stringify(body)) : undefined
   });
-};
 
-// Company functions
-export const getCompanies = () => {
-  return request('/companies');
-};
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || 'Request failed');
+  return data;
+}
 
-export const getRecommended = () => {
-  return request('/companies/recommended');
-};
+export const api = {
+  // Auth
+  register: (body) => request('POST', '/auth/register', body),
+  login: (body) => request('POST', '/auth/login', body),
+  me: () => request('GET', '/auth/me'),
 
-export const postCompany = (data) => {
-  return request('/companies', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
-};
+  // Students
+  getMyProfile: () => request('GET', '/students/me'),
+  updateProfile: (body) => request('PUT', '/students/me', body),
+  uploadResume: (formData) => request('POST', '/students/upload-resume', formData, true),
+  getStudents: (params = '') => request('GET', `/students?${params}`),
+  getMentoredStudents: () => request('GET', '/students/mentored'),
 
-export const getPlacementStats = () => {
-  return request('/companies/stats');
-};
+  // Companies
+  getCompanies: () => request('GET', '/companies'),
+  getRecommended: () => request('GET', '/companies/recommended'),
+  getCompanyStats: () => request('GET', '/companies/stats'),
+  postCompany: (body) => request('POST', '/companies', body),
+  updateCompany: (id, body) => request('PUT', `/companies/${id}`, body),
+  getCompany: (id) => request('GET', `/companies/${id}`),
 
-// Application functions
-export const applyToCompany = (companyId) => {
-  return request(`/applications/${companyId}`, {
-    method: 'POST',
-    body: JSON.stringify({}),
-  });
-};
+  // Applications
+  apply: (companyId, body) => request('POST', `/applications/${companyId}`, body),
+  getMyApplications: () => request('GET', '/applications/mine'),
+  getPendingMentor: () => request('GET', '/applications/pending-mentor'),
+  mentorDecision: (id, body) => request('PATCH', `/applications/${id}/mentor`, body),
+  getAllApplications: (params = '') => request('GET', `/applications/all?${params}`),
+  updateStatus: (id, body) => request('PATCH', `/applications/${id}/status`, body),
 
-export const getApplications = () => {
-  return request('/applications/mine');
-};
+  // Interviews
+  scheduleInterview: (body) => request('POST', '/interviews', body),
+  getMyInterviews: () => request('GET', '/interviews/mine'),
+  getAllInterviews: (params = '') => request('GET', `/interviews?${params}`),
+  updateOutcome: (id, body) => request('PATCH', `/interviews/${id}/outcome`, body),
 
-export const getPendingApprovals = () => {
-  return request('/applications/pending-mentor');
-};
-
-export const respondToApproval = (applicationId, mentorApproved, mentorNote, status) => {
-  return request(`/applications/${applicationId}/mentor`, {
-    method: 'PATCH',
-    body: JSON.stringify({ mentorApproved, mentorNote, status }),
-  });
-};
-
-// Feedback functions
-export const submitFeedback = (data) => {
-  return request('/feedback', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
-};
-
-export const getCertificates = () => {
-  return request('/feedback');
+  // Feedback
+  submitFeedback: (body) => request('POST', '/feedback', body),
+  getFeedback: () => request('GET', '/feedback'),
+  verifyCert: (code) => request('GET', `/feedback/verify/${code}`)
 };

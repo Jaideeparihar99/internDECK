@@ -1,51 +1,32 @@
 const mongoose = require('mongoose');
 
-const companySchema = new mongoose.Schema(
-  {
-    name: {
-      type: String,
-      required: [true, 'Please provide company name'],
-    },
-    type: {
-      type: String,
-      enum: ['IT', 'Core', 'Government', 'Startup', 'PSU'],
-      required: true,
-    },
-    roleName: {
-      type: String,
-      required: true,
-    },
-    description: String,
-    stipend: Number,
-    minCgpa: {
-      type: Number,
-      default: 0,
-    },
-    requiredSkills: [String],
-    eligibleBranches: [String],
-    placementPotential: {
-      type: String,
-      enum: ['High', 'Medium', 'Low'],
-      default: 'Medium',
-    },
-    lastDateToApply: Date,
-    isVerified: {
-      type: Boolean,
-      default: false,
-    },
-    isOpen: {
-      type: Boolean,
-      default: true,
-    },
-    postedBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      required: true,
-    },
-  },
-  {
-    timestamps: true,
-  }
-);
+const companySchema = new mongoose.Schema({
+  name: { type: String, required: true, trim: true },
+  description: { type: String },
+  industry: { type: String },
+  website: { type: String },
+  logoUrl: { type: String },
+
+  // Job details
+  role: { type: String, required: true },
+  stipend: { type: Number },
+  duration: { type: String },
+  location: { type: String },
+  mode: { type: String, enum: ['remote', 'onsite', 'hybrid'], default: 'onsite' },
+
+  // Eligibility
+  requiredSkills: [{ type: String }],
+  minCgpa: { type: Number, default: 0 },
+  eligibleBranches: [{ type: String }],
+
+  // Meta
+  openings: { type: Number, default: 1 },
+  applicationDeadline: { type: Date },
+  isOpen: { type: Boolean, default: true },
+  isVerified: { type: Boolean, default: false },
+  postedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+
+  placementType: { type: String, enum: ['internship', 'fulltime', 'both'], default: 'internship' }
+}, { timestamps: true });
 
 module.exports = mongoose.model('Company', companySchema);

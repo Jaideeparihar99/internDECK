@@ -1,71 +1,54 @@
 const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
 
-const userSchema = new mongoose.Schema(
-  {
-    name: {
-      type: String,
-      required: [true, 'Please provide a name'],
-    },
-    email: {
-      type: String,
-      required: [true, 'Please provide an email'],
-      unique: true,
-      lowercase: true,
-      match: [
-        /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/,
-        'Please provide a valid email address',
-      ],
-    },
-    password: {
-      type: String,
-      required: [true, 'Please provide a password'],
-      select: false,
-    },
-    role: {
-      type: String,
-      enum: ['student', 'mentor', 'placement_cell', 'recruiter'],
-      default: 'student',
-    },
-    studentId: String,
-    branch: String,
-    semester: Number,
-    cgpa: {
-      type: Number,
-      min: 0,
-      max: 10,
-      default: 0,
-    },
-    skills: [String],
-    resumeUrl: String,
-    coverLetter: String,
-    profileUpdatedAt: Date,
-    profileSemester: Number,
-    employabilityScore: {
-      technical: {
-        type: Number,
-        default: 0,
-      },
-      communication: {
-        type: Number,
-        default: 0,
-      },
-      teamwork: {
-        type: Number,
-        default: 0,
-      },
-      domain: {
-        type: Number,
-        default: 0,
-      },
-    },
-    mentorId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-    },
+const userSchema = new mongoose.Schema({
+  name: { type: String, required: true, trim: true },
+  email: { type: String, required: true, unique: true, lowercase: true, trim: true },
+  password: { type: String, required: true, minlength: 6 },
+  role: {
+    type: String,
+    enum: ['student', 'mentor', 'placement_cell', 'recruiter'],
+    required: true
   },
-  {
-    timestamps: true,
-  }
-);
+
+  // Student-specific fields
+  rollNumber: { type: String },
+  branch: { type: String },
+  cgpa: { type: Number, min: 0, max: 10 },
+  skills: [{ type: String }],
+  resumeUrl: { type: String },
+  mentorId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  employabilityScore: {
+    technical: { type: Number, default: 0 },
+    communication: { type: Number, default: 0 },
+    teamwork: { type: Number, default: 0 },
+    problemSolving: { type: Number, default: 0 }
+  },
+
+  // Recruiter-specific fields
+  company: { type: String },
+  designation: { type: String },
+
+  // Placement cell specific
+  department: { type: String },
+
+  isActive: { type: Boolean, default: true }
+}, { timestamps: true });
+
+userSchema.pre('save', async function (next) {
+  if (!this.isModified('password')) return next();
+  this.password = await bcrypt.hash(this.password, 10);
+  next();
+});
+
+userSchema.methods.comparePassword = async function (candidatePassword) {
+  return bcrypt.compare(candidatePassword, this.password);
+};
+
+userSchema.methods.toJSON = function () {
+  const obj = this.toObject();
+  delete obj.password;
+  return obj;
+};
 
 module.exports = mongoose.model('User', userSchema);

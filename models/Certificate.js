@@ -1,35 +1,26 @@
 const mongoose = require('mongoose');
+const crypto = require('crypto');
 
-const certificateSchema = new mongoose.Schema(
-  {
-    studentId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      required: true,
-    },
-    feedbackLogId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'FeedbackLog',
-      required: true,
-    },
-    companyId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Company',
-      required: true,
-    },
-    certificateUrl: String,
-    verificationCode: {
-      type: String,
-      default: () => Math.random().toString(36).substr(2, 8).toUpperCase(),
-    },
-    issuedAt: {
-      type: Date,
-      default: Date.now,
-    },
+const certificateSchema = new mongoose.Schema({
+  studentId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  companyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Company', required: true },
+  feedbackId: { type: mongoose.Schema.Types.ObjectId, ref: 'FeedbackLog', required: true },
+
+  verificationCode: {
+    type: String,
+    unique: true,
+    default: () => crypto.randomBytes(8).toString('hex').toUpperCase()
   },
-  {
-    timestamps: true,
-  }
-);
+
+  pdfUrl: { type: String },
+  issuedAt: { type: Date, default: Date.now },
+
+  internshipPeriod: {
+    from: { type: Date },
+    to: { type: Date }
+  },
+
+  role: { type: String }
+}, { timestamps: true });
 
 module.exports = mongoose.model('Certificate', certificateSchema);

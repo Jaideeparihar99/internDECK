@@ -1,107 +1,87 @@
 const express = require('express');
 const Company = require('../models/Company');
-const User = require('../models/User');
-const { protect, allowRoles } = require('../middleware/auth');
+const Application = require('../models/Application');
+const { auth, authorize } = require('../middleware/auth');
 const { getRecommendations } = require('../utils/recommend');
 
 const router = express.Router();
 
-// Get all open verified companies
-router.get('/', protect, async (req, res) => {
+// GET /api/companies
+router.get('/', auth, async (req, res) => {
   try {
-    const companies = await Company.find({ isOpen: true, isVerified: true }).populate(
-      'postedBy',
-      'name email'
-    );
-
-    res.status(200).json({
-      success: true,
-      data: companies,
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    const companies = await Company.find({ isOpen: true, isVerified: true })
+      .populate('postedBy', 'name')
+      .sort({ createdAt: -1 });
+    res.json(companies);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 });
 
-// Get recommended companies for student
-router.get('/recommended', protect, allowRoles('student'), async (req, res) => {
+// GET /api/companies/recommended
+router.get('/recommended', auth, authorize('student'), async (req, res) => {
   try {
-    const student = await User.findById(req.user.id);
     const companies = await Company.find({ isOpen: true, isVerified: true });
-
-    const recommendations = getRecommendations(student, companies);
-
-    res.status(200).json({
-      success: true,
-      data: recommendations,
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    const recommendations = getRecommendations(req.user, companies);
+    res.json(recommendations);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 });
 
-// Create company (placement cell only)
-router.post('/', protect, allowRoles('placement_cell'), async (req, res) => {
+// GET /api/companies/stats — placement_cell
+router.get('/stats', auth, authorize('placement_cell'), async (req, res) => {
   try {
-    const {
-      name,
-      type,
-      roleName,
-      description,
-      stipend,
-      minCgpa,
-      requiredSkills,
-      eligibleBranches,
-      placementPotential,
-      lastDateToApply,
-    } = req.body;
+    const totalCompanies = await Company.countDocuments({ isVerified: true });
+    const openCompanies = await Company.countDocuments({ isOpen: true, isVerified: true });
+    const totalApplications = await Application.countDocuments();
+    const offered = await Application.countDocuments({ status: 'offered' });
 
-    const company = await Company.create({
-      name,
-      type,
-      roleName,
-      description,
-      stipend,
-      minCgpa,
-      requiredSkills,
-      eligibleBranches,
-      placementPotential,
-      lastDateToApply,
-      postedBy: req.user.id,
-      isVerified: true,
-    });
+    // Top companies by applications
+    const topCompanies = await Application.aggregate([
+      { $group: { _id: '$companyId', count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 5 },
+      { $lookup: { from: 'companies', localField: '_id', foreignField: '_id', as: 'company' } },
+      { $unwind: '$company' },
+      { $project: { name: '$company.name', count: 1 } }
+    ]);
 
-    res.status(201).json({
-      success: true,
-      data: company,
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.json({ totalCompanies, openCompanies, totalApplications, offered, topCompanies });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 });
 
-// Get placement stats (placement cell only)
-router.get('/stats', protect, allowRoles('placement_cell'), async (req, res) => {
+// POST /api/companies — placement_cell only
+router.post('/', auth, authorize('placement_cell'), async (req, res) => {
   try {
-    const User = require('../models/User');
-    const Application = require('../models/Application');
+    const company = await Company.create({ ...req.body, postedBy: req.user._id, isVerified: true });
+    res.status(201).json(company);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
 
-    const totalStudents = await User.countDocuments({ role: 'student' });
+// GET /api/companies/:id
+router.get('/:id', auth, async (req, res) => {
+  try {
+    const company = await Company.findById(req.params.id).populate('postedBy', 'name');
+    if (!company) return res.status(404).json({ message: 'Company not found' });
+    res.json(company);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
 
-    const placedStudents = await Application.distinct('studentId', { status: 'offer' });
-    const placedCount = placedStudents.length;
-    const unplacedCount = totalStudents - placedCount;
-
-    res.status(200).json({
-      success: true,
-      data: {
-        totalStudents,
-        placedCount,
-        unplacedCount,
-      },
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+// PUT /api/companies/:id — placement_cell only
+router.put('/:id', auth, authorize('placement_cell'), async (req, res) => {
+  try {
+    const company = await Company.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    if (!company) return res.status(404).json({ message: 'Company not found' });
+    res.json(company);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 });
 
