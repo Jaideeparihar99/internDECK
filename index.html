@@ -1,6 +1,198 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#185FA5" />
+    <meta
+      name="description"
+      content="CampusConnect / InternBridge - Full Stack Campus Placement Portal"
+    />
+    <title>CampusConnect</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #0b1220;
+        --card: rgba(255, 255, 255, 0.06);
+        --text: rgba(255, 255, 255, 0.92);
+        --muted: rgba(255, 255, 255, 0.7);
+        --border: rgba(255, 255, 255, 0.12);
+        --primary: #4aa3ff;
+        --primary-2: #7c5cff;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial,
+          "Apple Color Emoji", "Segoe UI Emoji";
+        background: radial-gradient(1000px 600px at 20% 0%, rgba(74, 163, 255, 0.28), transparent 55%),
+          radial-gradient(900px 500px at 80% 30%, rgba(124, 92, 255, 0.25), transparent 55%),
+          var(--bg);
+        color: var(--text);
+      }
+      a {
+        color: inherit;
+      }
+      .wrap {
+        max-width: 960px;
+        margin: 0 auto;
+        padding: 48px 20px;
+      }
+      .header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+      }
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 12px;
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.04);
+        border-radius: 999px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .title {
+        margin: 14px 0 8px;
+        font-size: 40px;
+        line-height: 1.1;
+        letter-spacing: -0.02em;
+      }
+      .subtitle {
+        margin: 0;
+        color: var(--muted);
+        font-size: 16px;
+        line-height: 1.6;
+        max-width: 70ch;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(12, 1fr);
+        gap: 16px;
+        margin-top: 28px;
+      }
+      .card {
+        grid-column: span 12;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 18px 18px 16px;
+        overflow: hidden;
+      }
+      @media (min-width: 820px) {
+        .card.half {
+          grid-column: span 6;
+        }
+      }
+      .card h2 {
+        margin: 0 0 10px;
+        font-size: 16px;
+        letter-spacing: -0.01em;
+      }
+      .muted {
+        color: var(--muted);
+      }
+      .cmds {
+        margin: 12px 0 0;
+        padding: 12px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        background: rgba(0, 0, 0, 0.18);
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+          "Courier New", monospace;
+        font-size: 13px;
+        line-height: 1.6;
+        overflow: auto;
+        white-space: pre;
+      }
+      .btnrow {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 12px;
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 10px 12px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        text-decoration: none;
+        background: rgba(255, 255, 255, 0.06);
+      }
+      .btn.primary {
+        border-color: rgba(74, 163, 255, 0.55);
+        background: linear-gradient(135deg, rgba(74, 163, 255, 0.18), rgba(124, 92, 255, 0.14));
+      }
+      .footer {
+        margin-top: 26px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+      code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+          "Courier New", monospace;
+        font-size: 0.95em;
+      }
+    </style>
+  </head>
   <body>
-    <h1>jd sitek</h1>
+    <main class="wrap">
+      <div class="header">
+        <div>
+          <div class="badge">Full‑stack app • Backend: Express • Frontend: React (CRA)</div>
+          <h1 class="title">CampusConnect</h1>
+          <p class="subtitle">
+            This repository contains a Node/Express backend at the repo root and a React frontend
+            inside <code>frontend/</code>. If you opened this file directly, you’ll only see this
+            landing page—start the dev servers to run the app.
+          </p>
+        </div>
+      </div>
+
+      <section class="grid" aria-label="Quick start">
+        <article class="card half">
+          <h2>Start backend (API)</h2>
+          <div class="muted">From the repo root:</div>
+          <div class="cmds">npm install
+npm run dev</div>
+        </article>
+
+        <article class="card half">
+          <h2>Start frontend (React)</h2>
+          <div class="muted">In <code>frontend/</code>:</div>
+          <div class="cmds">cd frontend
+npm install
+npm start</div>
+        </article>
+
+        <article class="card">
+          <h2>Notes</h2>
+          <p class="subtitle muted" style="margin: 0">
+            The real React HTML template is <code>frontend/public/index.html</code>. The frontend
+            dev server will open the app in your browser automatically.
+          </p>
+          <div class="btnrow" role="group" aria-label="Helpful links">
+            <a class="btn primary" href="./frontend" title="Open frontend folder in repo view">Open frontend folder</a>
+            <a class="btn" href="./frontend/public/index.html" title="React template (won't run standalone)">
+              View React template HTML
+            </a>
+          </div>
+        </article>
+      </section>
+
+      <div class="footer">
+        If you want, I can also wire the backend to serve the built React app (so one server runs
+        everything).
+      </div>
+    </main>
   </body>
 </html>
