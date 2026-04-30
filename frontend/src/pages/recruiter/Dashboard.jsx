@@ -107,6 +107,8 @@ export function RecruiterDashboard() {
   );
 }
 
+export default RecruiterDashboard;
+
 /* ============ RECRUITER SEARCH ============ */
 export function RecruiterSearch() {
   const [students, setStudents] = useState([]);

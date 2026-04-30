@@ -48,6 +48,8 @@ export function MentorDashboard() {
   );
 }
 
+export default MentorDashboard;
+
 /* ============ MENTOR APPROVALS ============ */
 export function MentorApprovals() {
   const [pending, setPending] = useState([]);

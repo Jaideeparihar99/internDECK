@@ -106,6 +106,8 @@ export function PlacementDashboard() {
   );
 }
 
+export default PlacementDashboard;
+
 /* ============ PLACEMENT COMPANIES ============ */
 const BRANCHES = ['CSE', 'ECE', 'EEE', 'ME', 'CE', 'IT', 'Other'];
 

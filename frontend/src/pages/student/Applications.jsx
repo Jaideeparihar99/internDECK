@@ -48,6 +48,8 @@ export function StudentApplications() {
   );
 }
 
+export default StudentApplications;
+
 export function StudentInterviews() {
   const [interviews, setInterviews] = useState([]);
   const [loading, setLoading] = useState(true);
